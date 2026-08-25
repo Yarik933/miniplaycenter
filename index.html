@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>Mini Play Center</title> 
+
+    <link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
+    <link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
+
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <script>
+        window.tgInitData = "";
+
+        function getTelegramInitData() {
+            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
+                return window.Telegram.WebApp.initData;
+            }
+            try {
+                const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                const tgWebAppData = hashParams.get("tgWebAppData");
+                if (tgWebAppData) return tgWebAppData;
+            } catch(e) {}
+            return window.tgInitData || "";
+        }
+
+        function initTelegramApp() {
+            try {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.Telegram.WebApp.ready();
+                    window.Telegram.WebApp.expand();
+                    if (window.Telegram.WebApp.setHeaderColor) window.Telegram.WebApp.setHeaderColor('#0d0e15');
+                    if (window.Telegram.WebApp.setBackgroundColor) window.Telegram.WebApp.setBackgroundColor('#0d0e15');
+                    window.tgInitData = getTelegramInitData();
+                }
+            } catch(e) {
+                console.error("TG Init Error:", e);
+            }
+        }
+
+        initTelegramApp();
+        window.addEventListener("DOMContentLoaded", initTelegramApp);
+    </script>
+
+    <style>
+        html, body, #canvas {
+            margin: 0;
+            padding: 0;
+            border: 0;
+        }
+
+        body {
+            color: white;
+            background-color: #0d0e15 !important;
+            overflow: hidden;
+            touch-action: none;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            align-items: center !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas {
+            display: block;
+            position: relative;
+            z-index: 1;
+        }
+
+        #canvas:focus {
+            outline: none;
+        }
+
+        #status, #status-splash, .godot, #status-notice {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
+        #custom-loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #0d0e15;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .loader-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: opacity 0.3s ease;
+        }
+
+        .loader-title {
+            color: #ffffff;
+            font-size: 32px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .loader-percentage {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 18px;
+            font-weight: 500;
+            min-height: 24px;
+            margin-bottom: 8px;
+        }
+    </style>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const projectTitle = document.title || "Game";
+            const loaderDiv = document.createElement("div");
+            loaderDiv.id = "custom-loading-screen";
+            loaderDiv.innerHTML = `
+                <div class="loader-content" id="loader-ui">
+                    <div class="loader-title">${projectTitle}</div>
+                    <div class="loader-percentage" id="loading-pct">Загрузка: 0%</div>
+                </div>
+            `;
+            document.body.appendChild(loaderDiv);
+
+            const checkCanvasActive = setInterval(() => {
+                const canvas = document.getElementById("canvas");
+                if (canvas && canvas.style.display !== "none" && canvas.width > 0) {
+                    try {
+                        const gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
+                        if (gl) {
+                            const pixel = new Uint8Array(4);
+                            gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+                            
+                            if (pixel[3] > 0 || pixel[0] > 0 || pixel[1] > 0 || pixel[2] > 0) {
+                                clearInterval(checkCanvasActive);
+                                const loaderUi = document.getElementById("loader-ui");
+                                if (loaderUi) loaderUi.style.opacity = "0";
+                                
+                                setTimeout(() => {
+                                    loaderDiv.style.opacity = "0";
+                                    setTimeout(() => loaderDiv.remove(), 600);
+                                }, 200);
+                            }
+                        }
+                    } catch (e) {
+                        clearInterval(checkCanvasActive);
+                        loaderDiv.remove();
+                    }
+                }
+            }, 100);
+        });
+    </script>
+</head>
+<body>
+    <canvas id="canvas">
+        Your browser does not support the canvas tag.
+    </canvas>
+
+    <noscript>
+        Your browser does not support JavaScript.
+    </noscript>
+
+    <div id="status">
+        <img id="status-splash" class="show-image--true fullsize--true use-filter--true" src="index.png" alt="">
+        <progress id="status-progress"></progress>
+        <div id="status-notice"></div>
+    </div>
+
+    <script src="index.js"></script>
+    <script>
+        const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":true,"fileSizes":{"index.pck":1114388,"index.wasm":37686550},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+        
+        if (GODOT_CONFIG && GODOT_CONFIG.mainPack) {
+            GODOT_CONFIG.mainPack = GODOT_CONFIG.mainPack + '?v=' + Date.now();
+        }
+
+        const GODOT_THREADS_ENABLED = false;
+        const engine = new Engine(GODOT_CONFIG);
+
+        (function () {
+            const statusOverlay = document.getElementById('status');
+            const statusProgress = document.getElementById('status-progress');
+            const statusNotice = document.getElementById('status-notice');
+
+            let initializing = true;
+            let statusMode = '';
+
+            function setStatusMode(mode) {
+                if (statusMode === mode || !initializing) return;
+                if (mode === 'hidden') {
+                    statusOverlay.remove();
+                    initializing = false;
+                    return;
+                }
+                statusOverlay.style.visibility = 'visible';
+                statusProgress.style.display = mode === 'progress' ? 'block' : 'none';
+                statusNotice.style.display = mode === 'notice' ? 'block' : 'none';
+                statusMode = mode;
+            }
+
+            function setStatusNotice(text) {
+                while (statusNotice.lastChild) {
+                    statusNotice.removeChild(statusNotice.lastChild);
+                }
+                const lines = text.split('\n');
+                lines.forEach((line) => {
+                    statusNotice.appendChild(document.createTextNode(line));
+                    statusNotice.appendChild(document.createElement('br'));
+                });
+            }
+
+            function displayFailureNotice(err) {
+                console.error(err);
+                if (err instanceof Error) {
+                    setStatusNotice(err.message);
+                } else if (typeof err === 'string') {
+                    setStatusNotice(err);
+                } else {
+                    setStatusNotice('An unknown error occurred.');
+                }
+                setStatusMode('notice');
+                initializing = false;
+            }
+
+            const missing = Engine.getMissingFeatures({
+                threads: GODOT_THREADS_ENABLED,
+            });
+
+            if (missing.length !== 0) {
+                const missingMsg = 'Error\nРесурсы платформы были нарушены или не обработаны:\n';
+                displayFailureNotice(missingMsg + missing.join('\n'));
+            } else {
+                setStatusMode('progress');
+                engine.startGame({
+                    'onProgress': function (current, total) {
+                        const pctText = document.getElementById("loading-pct");
+                        if (pctText) {
+                            if (total > 0) {
+                                const pct = Math.round((current / total) * 100);
+                                pctText.innerText = `Загрузка: ${pct}%`;
+                            } else if (current > 0) {
+                                const mb = (current / (1024 * 1024)).toFixed(1);
+                                pctText.innerText = `Загрузка: ${mb} MB`;
+                            } else {
+                                pctText.innerText = "Инициализация...";
+                            }
+                        }
+                    },
+                }).then(() => {
+                    setStatusMode('hidden');
+                }, displayFailureNotice);
+            }
+        }());
+    </script>
+</body>
+</html>
